@@ -1,14 +1,12 @@
-name: dependabot
+name: dependabot-test
 
 on:
   workflow_dispatch:
-  schedule:
-    - cron: "0 0 * * *"
 
 jobs:
   get_current_info:
     name: Get current info
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       alpha_pkg_name: ${{ steps.current.outputs.alpha_pkg_name }}
       alpha_pkg_source_version: ${{ steps.current.outputs.alpha_pkg_source_version }}
@@ -19,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          repository: nikkinikki-org/OpenWrt-nikki
+          repository: apoiston/nikki
           ref: main
           path: OpenWrt-nikki
 
@@ -34,7 +32,7 @@ jobs:
   get_latest_alpha_info:
     needs: get_current_info
     name: Get latest alpha info
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       pkg_version: ${{ steps.latest.outputs.pkg_version }}
       pkg_source_version: ${{ steps.latest.outputs.pkg_source_version }}
@@ -79,13 +77,13 @@ jobs:
       - get_latest_alpha_info
     if: ${{ needs.get_current_info.outputs.alpha_pkg_source_version != needs.get_latest_alpha_info.outputs.pkg_source_version }}
     name: Update alpha
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          repository: nikkinikki-org/OpenWrt-nikki
+          repository: apoiston/nikki
           ref: main
           path: OpenWrt-nikki
 
@@ -109,7 +107,7 @@ jobs:
   get_latest_meta_info:
     needs: get_current_info
     name: Get latest meta info
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       pkg_version: ${{ steps.latest.outputs.pkg_version }}
       pkg_source_version: ${{ steps.latest.outputs.pkg_source_version }}
@@ -154,13 +152,13 @@ jobs:
       - get_latest_meta_info
     if: ${{ needs.get_current_info.outputs.meta_pkg_source_version != needs.get_latest_meta_info.outputs.pkg_source_version }}
     name: Update meta
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          repository: nikkinikki-org/OpenWrt-nikki
+          repository: apoiston/nikki
           ref: main
           path: OpenWrt-nikki
 
