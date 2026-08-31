@@ -1,14 +1,12 @@
-name: dependabot
+name: Test
 
 on:
-  schedule:
-    - cron: "0 0 * * *"
   workflow_dispatch:
 
 jobs:
   current_mihomo:
     name: Current mihomo
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       mihomo_alpha_pkg_name: ${{ steps.current.outputs.mihomo_alpha_pkg_name }}
       mihomo_alpha_pkg_source_version: ${{ steps.current.outputs.mihomo_alpha_pkg_source_version }}
@@ -19,7 +17,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          repository: nikkinikki-org/OpenWrt-nikki
+          repository: apoiston/nikki
           ref: main
           path: OpenWrt-nikki
 
@@ -34,7 +32,7 @@ jobs:
   latest_mihomo_alpha:
     needs: current_mihomo
     name: Latest mihomo alpha
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       mihomo_alpha_pkg_version_latest: ${{ steps.latest.outputs.mihomo_alpha_pkg_version_latest }}
       mihomo_alpha_pkg_source_version_latest: ${{ steps.latest.outputs.mihomo_alpha_pkg_source_version_latest }}
@@ -79,13 +77,13 @@ jobs:
       - latest_mihomo_alpha
     if: ${{ needs.current_mihomo.outputs.mihomo_alpha_pkg_source_version != needs.latest_mihomo_alpha.outputs.mihomo_alpha_pkg_source_version_latest }}
     name: Update mihomo alpha
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          repository: nikkinikki-org/OpenWrt-nikki
+          repository: apoiston/nikki
           ref: main
           path: OpenWrt-nikki
 
@@ -110,7 +108,7 @@ jobs:
   latest_mihomo_meta:
     needs: current_mihomo
     name: Latest mihomo meta
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     outputs:
       mihomo_meta_pkg_version_latest: ${{ steps.latest.outputs.mihomo_meta_pkg_version_latest }}
       mihomo_meta_pkg_source_version_latest: ${{ steps.latest.outputs.mihomo_meta_pkg_source_version_latest }}
@@ -154,13 +152,13 @@ jobs:
       - latest_mihomo_meta
     if: ${{ needs.current_mihomo.outputs.mihomo_meta_pkg_source_version != needs.latest_mihomo_meta.outputs.mihomo_meta_pkg_source_version_latest }}
     name: Update mihomo meta
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
 
     steps:
       - name: Checkout
         uses: actions/checkout@v7
         with:
-          repository: nikkinikki-org/OpenWrt-nikki
+          repository: apoiston/nikki
           ref: main
           path: OpenWrt-nikki
 
