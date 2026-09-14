@@ -18,6 +18,7 @@ PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
 PKG_BUILD_VERSION:=v1.19.30
+
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_BUILD_TIME:=$(shell date -u -Iseconds)
 
@@ -37,24 +38,24 @@ define Package/mihomo-meta
   URL:=https://wiki.metacubex.one
   DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +ip-full +kmod-inet-diag +kmod-tun
   PROVIDES:=mihomo
-  CONFLICTS:=mihomo-alpha
   VARIANT:=meta
   DEFAULT_VARIANT:=1
   ALTERNATIVES:=\
-    300:/usr/bin/mihomo:/usr/libexec/mihomo
+    200:/usr/bin/mihomo:/usr/libexec/mihomo-meta
 endef
 
 define Package/mihomo-meta/description
   A rule based proxy in Go.
 endef
 
-define Package/mihomo-meta/install
-	$(call GoPackage/Package/Install/Bin,$(1))
-endef
-
 define Build/Prepare
 	$(Build/Prepare/Default)
 	$(RM) -r $(PKG_BUILD_DIR)/rules/logic_test
+endef
+
+define Package/mihomo-meta/install
+	$(INSTALL_DIR) $(1)/usr/libexec
+	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/mihomo $(1)/usr/libexec/mihomo-meta
 endef
 
 $(eval $(call GoBinPackage,mihomo-meta))
