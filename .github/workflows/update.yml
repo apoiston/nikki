@@ -1,0 +1,180 @@
+name: Update
+
+on:
+  workflow_dispatch:
+
+jobs:
+  get_current_info:
+    name: Get current info
+    runs-on: ubuntu-26.04
+    outputs:
+      alpha_pkg_name: ${{ steps.current.outputs.alpha_pkg_name }}
+      alpha_pkg_source_version: ${{ steps.current.outputs.alpha_pkg_source_version }}
+      meta_pkg_name: ${{ steps.current.outputs.meta_pkg_name }}
+      meta_pkg_source_version: ${{ steps.current.outputs.meta_pkg_source_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          repository: apoiston/nikki
+          ref: main
+          path: openwrt-nikki
+
+      - name: Get current info
+        id: current
+        run: |
+          echo "alpha_pkg_name=$(grep -E "^PKG_NAME:=" openwrt-nikki/mihomo-alpha/Makefile | cut -d '=' -f 2)" >> $GITHUB_OUTPUT
+          echo "alpha_pkg_source_version=$(grep -E "^PKG_SOURCE_VERSION:=" openwrt-nikki/mihomo-alpha/Makefile | cut -d '=' -f 2)" >> $GITHUB_OUTPUT
+          echo "meta_pkg_name=$(grep -E "^PKG_NAME:=" openwrt-nikki/mihomo-meta/Makefile | cut -d '=' -f 2)" >> $GITHUB_OUTPUT
+          echo "meta_pkg_source_version=$(grep -E "^PKG_SOURCE_VERSION:=" openwrt-nikki/mihomo-meta/Makefile | cut -d '=' -f 2)" >> $GITHUB_OUTPUT
+
+  get_latest_alpha_info:
+    needs: get_current_info
+    name: Get latest alpha info
+    runs-on: ubuntu-26.04
+    outputs:
+      pkg_version: ${{ steps.latest.outputs.pkg_version }}
+      pkg_source_version: ${{ steps.latest.outputs.pkg_source_version }}
+      pkg_mirror_hash: ${{ steps.latest.outputs.pkg_mirror_hash }}
+      pkg_build_version: ${{ steps.latest.outputs.pkg_build_version }}
+      alpha_version: ${{ steps.latest.outputs.alpha_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          repository: MetaCubeX/mihomo
+          ref: Alpha
+          path: mihomo-alpha
+
+      - name: Get latest alpha info
+        id: latest
+        run: |
+          umask 0022
+          git -C mihomo-alpha config core.abbrev 8
+          commit_date=$(git -C mihomo-alpha log -n 1 --format=%cd --date=format:%Y.%m.%d)
+          commit_timestamp=$(git -C mihomo-alpha log -n 1 --format=%cd --date=format:%s)
+          commit_hash=$(git -C mihomo-alpha rev-parse HEAD)          
+          commit_hash_short=$(git -C mihomo-alpha rev-parse --short=7 HEAD)
+          pkg_version_latest="${commit_date}~${commit_hash_short}"
+          pkg_name="${{ needs.get_current_info.outputs.alpha_pkg_name }}"
+          source_dir="${pkg_name}-${pkg_version_latest}"
+          source_archive="${source_dir}.tar.gz"
+          mkdir -p "${source_dir}"
+          git -C mihomo-alpha archive --format=tar HEAD | tar -x -f - -C "${source_dir}"
+          tar --numeric-owner --owner=0 --group=0 --mode=a-s --sort=name --mtime="@${commit_timestamp}" -c "${source_dir}" | gzip -n -c > "${source_archive}"
+
+          echo "pkg_version=${pkg_version_latest}" >> $GITHUB_OUTPUT
+          echo "pkg_source_version=${commit_hash}" >> $GITHUB_OUTPUT
+          echo "pkg_mirror_hash=$(sha256sum ${source_archive} | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "pkg_build_version=alpha-${commit_hash_short}" >> $GITHUB_OUTPUT
+          echo "alpha_version=${commit_hash_short}" >> $GITHUB_OUTPUT
+
+  update_alpha:
+    needs:
+      - get_current_info
+      - get_latest_alpha_info
+    if: ${{ needs.get_current_info.outputs.alpha_pkg_source_version != needs.get_latest_alpha_info.outputs.pkg_source_version }}
+    name: Update alpha
+    runs-on: ubuntu-26.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          repository: apoiston/nikki
+          ref: main
+          path: openwrt-nikki
+
+      - name: Update
+        run: |
+          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ needs.get_latest_alpha_info.outputs.pkg_version }}/" openwrt-nikki/mihomo-alpha/Makefile
+          sed -i "s/PKG_SOURCE_VERSION:=.*/PKG_SOURCE_VERSION:=${{ needs.get_latest_alpha_info.outputs.pkg_source_version }}/" openwrt-nikki/mihomo-alpha/Makefile
+          sed -i "s/PKG_MIRROR_HASH:=.*/PKG_MIRROR_HASH:=${{ needs.get_latest_alpha_info.outputs.pkg_mirror_hash }}/" openwrt-nikki/mihomo-alpha/Makefile
+          sed -i "s/PKG_BUILD_VERSION:=.*/PKG_BUILD_VERSION:=${{ needs.get_latest_alpha_info.outputs.pkg_build_version }}/" openwrt-nikki/mihomo-alpha/Makefile
+
+      - name: PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          path: openwrt-nikki
+          branch: dependabot/mihomo-alpha
+          commit-message: "chore: update ${{ needs.get_current_info.outputs.alpha_pkg_name }} to ${{ needs.get_latest_alpha_info.outputs.alpha_version }}"
+          title: "chore: update ${{ needs.get_current_info.outputs.alpha_pkg_name }} to ${{ needs.get_latest_alpha_info.outputs.alpha_version }}"
+          body: |
+            [Changelog](https://github.com/metacubex/mihomo/compare/${{ needs.get_current_info.outputs.alpha_pkg_source_version }}...${{ needs.get_latest_alpha_info.outputs.pkg_source_version }})
+
+  get_latest_meta_info:
+    needs: get_current_info
+    name: Get latest meta info
+    runs-on: ubuntu-26.04
+    outputs:
+      pkg_version: ${{ steps.latest.outputs.pkg_version }}
+      pkg_source_version: ${{ steps.latest.outputs.pkg_source_version }}
+      pkg_mirror_hash: ${{ steps.latest.outputs.pkg_mirror_hash }}
+      pkg_build_version: ${{ steps.latest.outputs.pkg_build_version }}
+      meta_version: ${{ steps.latest.outputs.meta_version }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          repository: MetaCubeX/mihomo
+          ref: Meta
+          path: mihomo-meta
+          fetch-tags: true
+
+      - name: Get latest meta info
+        id: latest
+        run: |
+          umask 0022
+          git -C mihomo-meta config core.abbrev 8
+          latest_tag=$(git -C mihomo-meta tag --sort=-v:refname | head -n 1)
+          pkg_version=${latest_tag#v}
+          git -C mihomo-meta checkout "${latest_tag}"
+          commit_timestamp=$(git -C mihomo-meta log -n 1 --format=%cd --date=format:%s)
+          pkg_name="${{ needs.get_current_info.outputs.meta_pkg_name }}"
+          source_dir="${pkg_name}-${pkg_version}"
+          source_archive="${source_dir}.tar.gz"
+          mkdir -p "${source_dir}"
+          git -C mihomo-meta archive --format=tar HEAD | tar -x -f - -C "${source_dir}"
+          tar --numeric-owner --owner=0 --group=0 --mode=a-s --sort=name --mtime="@${commit_timestamp}" -c "${source_dir}" | gzip -n -c > "${source_archive}"
+
+          echo "pkg_version=${pkg_version}" >> $GITHUB_OUTPUT
+          echo "pkg_source_version=${latest_tag}" >> $GITHUB_OUTPUT
+          echo "pkg_mirror_hash=$(sha256sum ${source_archive} | cut -d ' ' -f 1)" >> $GITHUB_OUTPUT
+          echo "pkg_build_version=${latest_tag}" >> $GITHUB_OUTPUT
+          echo "meta_version=${latest_tag}" >> $GITHUB_OUTPUT
+
+  update_meta:
+    needs:
+      - get_current_info
+      - get_latest_meta_info
+    if: ${{ needs.get_current_info.outputs.meta_pkg_source_version != needs.get_latest_meta_info.outputs.pkg_source_version }}
+    name: Update meta
+    runs-on: ubuntu-26.04
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          repository: apoiston/nikki
+          ref: main
+          path: openwrt-nikki
+
+      - name: Update
+        run: |
+          sed -i "s/PKG_VERSION:=.*/PKG_VERSION:=${{ needs.get_latest_meta_info.outputs.pkg_version }}/" openwrt-nikki/mihomo-meta/Makefile
+          sed -i "s/PKG_SOURCE_VERSION:=.*/PKG_SOURCE_VERSION:=${{ needs.get_latest_meta_info.outputs.pkg_source_version }}/" openwrt-nikki/mihomo-meta/Makefile
+          sed -i "s/PKG_MIRROR_HASH:=.*/PKG_MIRROR_HASH:=${{ needs.get_latest_meta_info.outputs.pkg_mirror_hash }}/" openwrt-nikki/mihomo-meta/Makefile
+          sed -i "s/PKG_BUILD_VERSION:=.*/PKG_BUILD_VERSION:=${{ needs.get_latest_meta_info.outputs.pkg_build_version }}/" openwrt-nikki/mihomo-meta/Makefile
+
+      - name: PR
+        uses: peter-evans/create-pull-request@v8
+        with:
+          path: openwrt-nikki
+          branch: dependabot/mihomo-meta
+          commit-message: "chore: update ${{ needs.get_current_info.outputs.meta_pkg_name }} to ${{ needs.get_latest_meta_info.outputs.meta_version }}"
+          title: "chore: update ${{ needs.get_current_info.outputs.meta_pkg_name }} to ${{ needs.get_latest_meta_info.outputs.meta_version }}"
+          body: |
+            [Changelog](https://github.com/metacubex/mihomo/compare/${{ needs.get_current_info.outputs.meta_pkg_source_version }}...${{ needs.get_latest_meta_info.outputs.meta_version }})

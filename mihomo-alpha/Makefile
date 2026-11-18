@@ -1,14 +1,14 @@
 include $(TOPDIR)/rules.mk
 
 PKG_NAME:=mihomo-alpha
-PKG_VERSION:=2026.11.11
+PKG_VERSION:=2026.11.18~2be2f08
 
 PKG_SOURCE:=$(PKG_NAME)-$(PKG_VERSION).tar.gz
 PKG_SOURCE_SUBDIR:=$(PKG_NAME)-$(PKG_VERSION)
 PKG_SOURCE_PROTO:=git
 PKG_SOURCE_URL:=https://github.com/MetaCubeX/mihomo.git
-PKG_SOURCE_VERSION:=0455d0d28c4526937380505153e65a843d8612e8
-PKG_MIRROR_HASH:=f4c4e60044951b2ee73c4e5cd8c61df4db6e0a30a033de6ab940025e1e38747f
+PKG_SOURCE_VERSION:=2be2f0890978695637a61745ecb08b110d5e7719
+PKG_MIRROR_HASH:=5f5e9c7d4f13754d8e65bf0e9b1e75305ac8a0cf081f96d2e815b43fe668b77f
 
 PKG_LICENSE:=GPL3.0+
 PKG_MAINTAINER:=Joseph Mory <morytyann@gmail.com>
@@ -17,7 +17,8 @@ PKG_BUILD_DEPENDS:=golang/host
 PKG_BUILD_PARALLEL:=1
 PKG_BUILD_FLAGS:=no-mips16
 
-PKG_BUILD_VERSION:=alpha-0455d0d
+PKG_BUILD_VERSION:=alpha-2be2f08
+
 PKG_BUILD_DIR:=$(BUILD_DIR)/$(PKG_NAME)-$(PKG_VERSION)
 PKG_BUILD_TIME:=$(shell date -u -Iseconds)
 
@@ -37,23 +38,23 @@ define Package/mihomo-alpha
   URL:=https://wiki.metacubex.one
   DEPENDS:=$(GO_ARCH_DEPENDS) +ca-bundle +ip-full +kmod-inet-diag +kmod-tun
   PROVIDES:=mihomo
-  CONFLICTS:=mihomo-meta
   VARIANT:=alpha
   ALTERNATIVES:=\
-    300:/usr/bin/mihomo:/usr/libexec/mihomo
+    300:/usr/bin/mihomo:/usr/libexec/mihomo-alpha
 endef
 
 define Package/mihomo-alpha/description
   A rule based proxy in Go.
 endef
 
-define Package/mihomo-alpha/install
-	$(call GoPackage/Package/Install/Bin,$(1))
-endef
-
 define Build/Prepare
 	$(Build/Prepare/Default)
 	$(RM) -r $(PKG_BUILD_DIR)/rules/logic_test
+endef
+
+define Package/mihomo-alpha/install
+	$(INSTALL_DIR) $(1)/usr/libexec
+	$(INSTALL_BIN) $(GO_PKG_BUILD_BIN_DIR)/mihomo $(1)/usr/libexec/mihomo-alpha
 endef
 
 $(eval $(call GoBinPackage,mihomo-alpha))
